@@ -4,13 +4,12 @@ import os
 import numpy as np
 import random as rd
 
-from graph_recsys_benchmark.models import GCNRecsysModel
+from graph_recsys_benchmark.models import NMFRecsysModel
 from graph_recsys_benchmark.utils import get_folder_path
 from graph_recsys_benchmark.solvers import BaseSolver
 
-
-MODEL_TYPE = 'Graph'
-MODEL = 'GCN'
+MODEL_TYPE = 'MF'
+MODEL = 'NMF'
 
 parser = argparse.ArgumentParser()
 # Dataset params
@@ -21,10 +20,9 @@ parser.add_argument("--num_core", type=int, default=10, help="")
 parser.add_argument("--num_feat_core", type=int, default=10, help="")
 parser.add_argument("--train_ratio", type=float, default=0.8, help="")
 # Model params
-parser.add_argument("--dropout", type=float, default=0.5, help="")
-parser.add_argument("--emb_dim", type=int, default=64, help="")
-parser.add_argument("--repr_dim", type=int, default=16, help="")
-parser.add_argument("--hidden_size", type=int, default=64, help="")
+parser.add_argument("--latent_dim_mf", type=int, default=8, help="")
+parser.add_argument("--latent_dim_mlp", type=int, default=8, help="")
+parser.add_argument("--layers", type=list, default=[16, 32, 16, 8], help="")
 # Train params
 parser.add_argument("--num_negative_samples", type=int, default=5, help="")
 parser.add_argument("--init_eval", type=bool, default=False, help="")
@@ -59,15 +57,14 @@ else:
 # Setup args
 dataset_args = {
     'root': data_folder, 'dataset': args.dataset, 'name': args.dataset_name,
-    'if_use_features': args.if_use_features, 'emb_dim': args.emb_dim,
+    'if_use_features': args.if_use_features,
     'num_core': args.num_core, 'num_feat_core': args.num_feat_core,
     'train_ratio': args.train_ratio
 }
 model_args = {
     'model_type': MODEL_TYPE,
-    'if_use_features': args.if_use_features,
-    'emb_dim': args.emb_dim, 'hidden_size': args.hidden_size,
-    'repr_dim': args.repr_dim, 'dropout': args.dropout
+    'latent_dim_mf': args.latent_dim_mf, 'if_use_features': False,
+    'latent_dim_mlp': args.latent_dim_mlp, 'layers': args.layers
 }
 train_args = {
     'init_eval': args.init_eval, 'num_negative_samples': args.num_negative_samples,
@@ -100,20 +97,14 @@ def _negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_occ
     return negative_inids
 
 
-class UserItemGCNRecsysModel(GCNRecsysModel):
+class BPRNMFRecsysModel(NMFRecsysModel):
     def loss_func(self, pos_i_ratings, neg_i_ratings):
         return - (pos_i_ratings - neg_i_ratings).sigmoid().log().mean()
 
-    def update_graph_input(self, dataset):
-        edge_index_np = dataset.edge_index_nps['user2item']
-        edge_index_np = np.hstack([edge_index_np, np.flip(edge_index_np, 0)])
-        edge_index = torch.from_numpy(edge_index_np).long().to(train_args['device'])
-        return edge_index
 
-
-class GCNSolver(BaseSolver):
+class NMFSolver(BaseSolver):
     def __init__(self, model_class, dataset_args, model_args, train_args):
-        super(GCNSolver, self).__init__(model_class, dataset_args, model_args, train_args)
+        super(NMFSolver, self).__init__(model_class, dataset_args, model_args, train_args)
 
     def generate_candidates(self, dataset, u_nid):
         pos_i_nids = dataset.test_pos_unid_inid_map[u_nid]
@@ -126,5 +117,5 @@ class GCNSolver(BaseSolver):
 
 if __name__ == '__main__':
     dataset_args['_negative_sampling'] = _negative_sampling
-    solver = GCNSolver(UserItemGCNRecsysModel, dataset_args, model_args, train_args)
+    solver = NMFSolver(BPRNMFRecsysModel, dataset_args, model_args, train_args)
     solver.run()

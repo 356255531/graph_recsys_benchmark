@@ -277,7 +277,10 @@ def generate_graph_data(
     print('Building the item occurrence map...')
     item_nid_occs = {}
     for iid in items.iid:
-        item_nid_occs[e2nid_dict['iid'][iid]] = ratings[ratings.iid == iid].iloc[0]['movie_count']
+        try:
+            item_nid_occs[e2nid_dict['iid'][iid]] = ratings[ratings.iid == iid].iloc[0]['movie_count']
+        except:
+            pass
     dataset_property_dict['item_nid_occs'] = item_nid_occs
 
     return dataset_property_dict
@@ -299,7 +302,6 @@ class MovieLens(Dataset):
         self.num_core = kwargs.get('num_core', 10)
         self.num_feat_core = kwargs.get('num_feat_core', 10)
         self.seed = kwargs.get('seed')
-        self.device = kwargs.get('device', 'cpu')
         self.num_negative_samples = kwargs.get('num_negative_samples', 5)
         self.suffix = self.build_suffix()
         self._negative_sampling = kwargs['_negative_sampling']
@@ -310,7 +312,7 @@ class MovieLens(Dataset):
             dataset_property_dict = pickle.load(f)
         for k, v in dataset_property_dict.items():
             self[k] = v
-        self.train_edge_index = torch.from_numpy(self.edge_index_nps['user2item'].T).long().to(self.device)
+        self.train_edge_index = torch.from_numpy(self.edge_index_nps['user2item'].T).long()
 
         print('Dataset loaded!')
 
@@ -426,7 +428,7 @@ class MovieLens(Dataset):
                 ) for u_nid in u_nids
             ]
         )
-        negative_inids = torch.from_numpy(negative_inids).to(self.device)
+        negative_inids = torch.from_numpy(negative_inids)
         return negative_inids
 
     def __len__(self):

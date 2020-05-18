@@ -61,6 +61,8 @@ class BaseSolver(object):
                 pd.merge(pos_i_nid_df, neg_i_nid_df, how='inner', on='u_nid').to_numpy()
             ).to(self.train_args['device'])
 
+            if self.train_args['model_type'] == 'MF':
+                pos_neg_pair_t[:, 1:] -= dataset.e2nid_dict['iid'][0]
             loss = model.loss(pos_neg_pair_t).detach().cpu().item()
 
             pos_u_nids_t = torch.from_numpy(np.array([u_nid for _ in range(len(pos_i_nids))])).to(self.train_args['device'])
@@ -112,15 +114,22 @@ class BaseSolver(object):
                     # Create the dataset
                     self.dataset_args['seed'] = seed
                     dataset = load_dataset(self.dataset_args)
-                    if self.model_args['if_use_features']:
-                        dataset.data = dataset.data.to(self.train_args['device'])
-                    recsys_train_dataloader = DataLoader(dataset, shuffle=True, batch_size=self.train_args['batch_size'])
+                    recsys_train_dataloader = DataLoader(
+                        dataset,
+                        shuffle=True,
+                        batch_size=self.train_args['batch_size'],
+                        num_workers=self.train_args['num_workers']
+                    )
 
                     # Create model and optimizer
-                    if self.model_args['if_use_features']:
-                        self.model_args['emb_dim'] = dataset.data.x.shape[1]
-                    self.model_args['num_nodes'] = dataset.num_nodes
-                    self.model_args['dataset'] = dataset
+                    if self.model_args['model_type'] == 'Graph':
+                        if self.model_args['if_use_features']:
+                            self.model_args['emb_dim'] = dataset.data.x.shape[1]
+                        self.model_args['num_nodes'] = dataset.num_nodes
+                        self.model_args['dataset'] = dataset
+                    elif self.model_args['model_type'] == 'MF':
+                        self.model_args['num_users'] = dataset.num_users
+                        self.model_args['num_items'] = dataset.num_items
                     model = self.model_class(**self.model_args).to(self.train_args['device'])
 
                     optimizer = torch.optim.Adam(
@@ -173,6 +182,11 @@ class BaseSolver(object):
                             model.train()
                             train_bar = tqdm.tqdm(recsys_train_dataloader, total=len(recsys_train_dataloader))
                             for num_batch, pos_neg_pair_t in enumerate(train_bar):
+                                pos_neg_pair_t = pos_neg_pair_t.reshape(-1, 3)
+                                if self.model_args['model_type'] == 'MF':
+                                    pos_neg_pair_t[:, 1:] -= dataset.e2nid_dict['iid'][0]
+                                pos_neg_pair_t = pos_neg_pair_t.to(self.train_args['device'])
+
                                 loss = model.loss(pos_neg_pair_t)
 
                                 loss.backward()

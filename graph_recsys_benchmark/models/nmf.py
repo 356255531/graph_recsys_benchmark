@@ -17,8 +17,17 @@ class NMFRecsysModel(MFRecsysModel):
         for idx, (in_size, out_size) in enumerate(zip(kwargs['layers'][:-1], kwargs['layers'][1:])):
             self.fc_layers.append(torch.nn.Linear(in_size, out_size))
 
-        self.affine_output = torch.nn.Linear(in_features=kwargs['layers'][-1] + kwargs['hidden_mf'], out_features=1)
+        self.affine_output = torch.nn.Linear(in_features=kwargs['layers'][-1] + kwargs['latent_dim_mf'], out_features=1)
         self.logistic = torch.nn.Sigmoid()
+
+    def reset_parameters(self):
+        torch.nn.init.normal_(self.embedding_user_mlp.weight, -1, 1)
+        torch.nn.init.normal_(self.embedding_item_mlp.weight, -1, 1)
+        torch.nn.init.normal_(self.embedding_user_mf.weight, -1, 1)
+        torch.nn.init.normal_(self.embedding_item_mf.weight, -1, 1)
+        for layer in self.fc_layers:
+            torch.nn.init.normal_(layer.weight, -1, 1)
+        torch.nn.init.normal_(self.affine_output.weight, -1, 1)
 
     def forward(self, user_indices, item_indices):
         user_embedding_mlp = self.embedding_user_mlp(user_indices)
