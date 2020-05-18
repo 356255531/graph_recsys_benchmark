@@ -1,4 +1,5 @@
 import torch
+from dateutil.parser import parser
 from torch.utils.data import DataLoader
 from os.path import join
 from os.path import isfile
@@ -8,11 +9,10 @@ import itertools
 from collections import Counter
 import tqdm
 import pickle
-import random as rd
 
 from .dataset import Dataset
 from torch_geometric.data import download_url, extract_zip
-from torch_geometric.io import read_ml
+from ..parser import parse_ml
 
 
 def save_df(df, path):
@@ -342,7 +342,7 @@ class MovieLens(Dataset):
             ratings = ratings.fillna('')
         else:
             print('Data frame not found in {}! Read from raw data!'.format(self.processed_dir))
-            users, items, ratings = read_ml(unzip_raw_dir)
+            users, items, ratings = parse_ml(unzip_raw_dir)
 
             print('Preprocessing...')
             # remove duplications
