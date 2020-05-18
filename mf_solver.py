@@ -25,10 +25,10 @@ parser.add_argument("--latent_dim_mlp", type=int, default=8, help="")
 parser.add_argument("--layers", type=list, default=[16, 32, 16, 8], help="")
 # Train params
 parser.add_argument("--num_negative_samples", type=int, default=5, help="")
-parser.add_argument("--init_eval", type=bool, default=False, help="")
+parser.add_argument("--init_eval", type=bool, default=True, help="")
 
 parser.add_argument("--device", type=str, default='cuda', help="")
-parser.add_argument("--gpu_idx", type=str, default='0', help="")
+parser.add_argument("--gpu_idx", type=str, default='1', help="")
 parser.add_argument("--runs", type=int, default=100, help="")
 parser.add_argument("--epochs", type=int, default=100, help="")
 parser.add_argument("--batch_size", type=int, default=128, help="")
@@ -99,7 +99,7 @@ def _negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_occ
 
 class BPRNMFRecsysModel(NMFRecsysModel):
     def loss_func(self, pos_i_ratings, neg_i_ratings):
-        return - (pos_i_ratings - neg_i_ratings).sigmoid().log().mean()
+        return -(pos_i_ratings - neg_i_ratings).sigmoid().log().sum()
 
 
 class NMFSolver(BaseSolver):
