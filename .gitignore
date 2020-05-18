@@ -1,6 +1,7 @@
 # Project data
-checkpoint/
 tmp/
+*.pkl
+weights/
 
 # Pycharm
 .DS_Store
