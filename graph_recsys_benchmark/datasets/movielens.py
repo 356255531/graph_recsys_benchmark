@@ -205,7 +205,15 @@ def generate_graph_data(
     print('Creating item property edges...')
     i_nids = [e2nid_dict['iid'][iid] for iid in items.iid]
     year_nids = [e2nid_dict['year'][year] for year in items.year]
-    year2user_edge_index_np = np.vstack((np.array(year_nids), np.array(i_nids)))
+    year2item_edge_index_np = np.vstack((np.array(year_nids), np.array(i_nids)))
+
+    genre_nids = []
+    i_nids = []
+    for genre in unique_genres:
+        iids = items.iid[items[genre]]
+        i_nids += [e2nid_dict['iid'][iid] for iid in iids]
+        genre_nids += [nid2e_dict['genre'][genre] for _ in range(iids.shape[0])]
+    genre2item_edge_index_np = np.vstack((np.array(genre_nids), np.array(i_nids)))
 
     directors_list = [
         [director for director in directors.split(',') if director != '']
@@ -215,7 +223,7 @@ def generate_graph_data(
     directors_nids = list(itertools.chain.from_iterable(directors_nids))
     d_i_nids = [[i_nid for _ in range(len(directors_list[idx]))] for idx, i_nid in enumerate(i_nids)]
     d_i_nids = list(itertools.chain.from_iterable(d_i_nids))
-    director2user_edge_index_np = np.vstack((np.array(directors_nids), np.array(d_i_nids)))
+    director2item_edge_index_np = np.vstack((np.array(directors_nids), np.array(d_i_nids)))
 
     actors_list = [
         [actor for actor in actors.split(',') if actor != '']
@@ -225,7 +233,7 @@ def generate_graph_data(
     actor_nids = list(itertools.chain.from_iterable(actor_nids))
     a_i_nids = [[i_nid for _ in range(len(actors_list[idx]))] for idx, i_nid in enumerate(i_nids)]
     a_i_nids = list(itertools.chain.from_iterable(a_i_nids))
-    actor2user_edge_index_np = np.vstack((np.array(actor_nids), np.array(a_i_nids)))
+    actor2item_edge_index_np = np.vstack((np.array(actor_nids), np.array(a_i_nids)))
 
     writers_list = [
         [writer for writer in writers.split(',') if writer != '']
@@ -235,11 +243,12 @@ def generate_graph_data(
     writer_nids = list(itertools.chain.from_iterable(writer_nids))
     w_i_nids = [[i_nid for _ in range(len(writers_list[idx]))] for idx, i_nid in enumerate(i_nids)]
     w_i_nids = list(itertools.chain.from_iterable(w_i_nids))
-    writer2user_edge_index_np = np.vstack((np.array(writer_nids), np.array(w_i_nids)))
-    edge_index_nps['year2user'] = year2user_edge_index_np
-    edge_index_nps['director2user'] = director2user_edge_index_np
-    edge_index_nps['actor2user'] = actor2user_edge_index_np
-    edge_index_nps['writer2user'] = writer2user_edge_index_np
+    writer2item_edge_index_np = np.vstack((np.array(writer_nids), np.array(w_i_nids)))
+    edge_index_nps['year2item'] = year2item_edge_index_np
+    edge_index_nps['genre2item'] = genre2item_edge_index_np
+    edge_index_nps['director2item'] = director2item_edge_index_np
+    edge_index_nps['actor2item'] = actor2item_edge_index_np
+    edge_index_nps['writer2item'] = writer2item_edge_index_np
 
     print('Creating rating property edges...')
     train_pos_unid_inid_map, test_pos_unid_inid_map, neg_unid_inid_map = {}, {}, {}

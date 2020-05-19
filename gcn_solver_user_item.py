@@ -27,7 +27,7 @@ parser.add_argument("--repr_dim", type=int, default=16, help="")
 parser.add_argument("--hidden_size", type=int, default=64, help="")
 # Train params
 parser.add_argument("--num_negative_samples", type=int, default=5, help="")
-parser.add_argument("--init_eval", type=bool, default=False, help="")
+parser.add_argument("--init_eval", type=bool, default=True, help="")
 
 parser.add_argument("--device", type=str, default='cuda', help="")
 parser.add_argument("--gpu_idx", type=str, default='0', help="")
@@ -102,7 +102,7 @@ def _negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_occ
 
 class UserItemGCNRecsysModel(GCNRecsysModel):
     def loss_func(self, pos_i_ratings, neg_i_ratings):
-        return - (pos_i_ratings - neg_i_ratings).sigmoid().log().mean()
+        return - (pos_i_ratings - neg_i_ratings).sigmoid().log().sum()
 
     def update_graph_input(self, dataset):
         edge_index_np = dataset.edge_index_nps['user2item']

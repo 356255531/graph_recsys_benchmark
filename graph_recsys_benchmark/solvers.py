@@ -20,9 +20,9 @@ class BaseSolver(object):
 
     def generate_candidates(self, dataset, u_nid):
         """
-
-        :param dataset:
-        :param u_nid:
+        Return the recommendation candidates to the algorithms to rank
+        :param dataset: graph_recsys_benchmark.dataset.Dataset object
+        :param u_nid: user node ids
         :return:
         """
         raise NotImplementedError
@@ -61,16 +61,19 @@ class BaseSolver(object):
                 pd.merge(pos_i_nid_df, neg_i_nid_df, how='inner', on='u_nid').to_numpy()
             ).to(self.train_args['device'])
 
-            if self.train_args['model_type'] == 'MF':
+            if self.model_args['model_type'] == 'MF':
                 pos_neg_pair_t[:, 1:] -= dataset.e2nid_dict['iid'][0]
             loss = model.loss(pos_neg_pair_t).detach().cpu().item()
 
             pos_u_nids_t = torch.from_numpy(np.array([u_nid for _ in range(len(pos_i_nids))])).to(self.train_args['device'])
             pos_i_nids_t = torch.from_numpy(np.array(pos_i_nids)).to(self.train_args['device'])
-            pos_pred = model.predict(pos_u_nids_t, pos_i_nids_t)
             neg_u_nids_t = torch.from_numpy(np.array([u_nid for _ in range(len(neg_i_nids))])).to(self.train_args['device'])
             neg_i_nids_t = torch.from_numpy(np.array(neg_i_nids)).to(self.train_args['device'])
-            neg_pred = model.predict(neg_u_nids_t, neg_i_nids_t)
+            if self.model_args['model_type'] == 'MF':
+                pos_i_nids_t -= dataset.e2nid_dict['iid'][0]
+                neg_i_nids_t -= dataset.e2nid_dict['iid'][0]
+            pos_pred = model.predict(pos_u_nids_t, pos_i_nids_t).reshape(-1)
+            neg_pred = model.predict(neg_u_nids_t, neg_i_nids_t).reshape(-1)
 
             _, indices = torch.sort(torch.cat([pos_pred, neg_pred]), descending=True)
             hit_vec = (indices < len(pos_i_nids)).cpu().detach().numpy()
@@ -193,7 +196,7 @@ class BaseSolver(object):
                                 optimizer.step()
                                 optimizer.zero_grad()
 
-                                loss_per_batch.append(loss.cpu().item())
+                                loss_per_batch.append(loss.detach().cpu().item())
                                 train_loss = np.mean(loss_per_batch)
                                 train_bar.set_description(
                                     'Run: {}, epoch: {}, train loss: {:.4f}'.format(run, epoch, train_loss)
