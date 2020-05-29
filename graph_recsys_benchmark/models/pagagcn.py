@@ -18,8 +18,7 @@ class PAPAGCNChannel(torch.nn.Module):
                 self.gcn_layers.append(GCNConv(kwargs['hidden_size'], kwargs['hidden_size']))
             self.gcn_layers.append(GCNConv(kwargs['hidden_size'], kwargs['repr_dim']))
         else:
-            self.gcn_layers.append(GCNConv(kwargs['emb_dim'], kwargs['repr_dim'
-                                                                     '']))
+            self.gcn_layers.append(GCNConv(kwargs['emb_dim'], kwargs['repr_dim']))
 
         self.reset_parameters()
 
@@ -53,21 +52,21 @@ class PAGAGCNRecsysModel(GraphRecsysModel):
             raise NotImplementedError('Feature not implemented!')
         self.x, self.meta_path_edge_index_list = self.update_graph_input(kwargs['dataset'])
 
-        self.pagcn_channels = torch.nn.ModuleList()
+        self.pagagcn_channels = torch.nn.ModuleList()
         for num_steps in kwargs['meta_path_steps']:
             kwargs_cpy = kwargs.copy()
             kwargs_cpy['num_steps'] = num_steps
-            self.pagcn_channels.append(PAPAGCNChannel(**kwargs_cpy))
+            self.pagagcn_channels.append(PAPAGCNChannel(**kwargs_cpy))
 
         self.fc1 = torch.nn.Linear(2 * len(kwargs['meta_path_steps']) * kwargs['repr_dim'], kwargs['repr_dim'])
         self.fc2 = torch.nn.Linear(kwargs['repr_dim'], 1)
 
     def reset_parameters(self):
-        for module in self.pagcn_channels:
+        for module in self.pagagcn_channels:
             module.reset_parameters()
 
     def forward(self):
-        xs = [module(self.x, self.meta_path_edge_index_list[idx]) for idx, module in enumerate(self.pagcn_channels)]
+        xs = [module(self.x, self.meta_path_edge_index_list[idx]) for idx, module in enumerate(self.pagagcn_channels)]
         if self.aggr == 'concat':
             x = torch.cat(xs, dim=1)
         else:

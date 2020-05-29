@@ -18,7 +18,7 @@ class BaseSolver(object):
         self.model_args = model_args
         self.train_args = train_args
 
-    def  generate_candidates(self, dataset, u_nid):
+    def generate_candidates(self, dataset, u_nid):
         """
         Return the recommendation candidates to the algorithms to rank
         :param dataset: graph_recsys_benchmark.dataset.Dataset object
