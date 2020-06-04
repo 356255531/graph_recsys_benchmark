@@ -73,7 +73,6 @@ class BaseSolver(object):
             if self.model_args['model_type'] == 'MF':
                 pos_u_nids_t -= dataset.e2nid_dict['uid'][0]
                 neg_u_nids_t -= dataset.e2nid_dict['uid'][0]
-
                 pos_i_nids_t -= dataset.e2nid_dict['iid'][0]
                 neg_i_nids_t -= dataset.e2nid_dict['iid'][0]
             pos_pred = model.predict(pos_u_nids_t, pos_i_nids_t).reshape(-1)
@@ -159,7 +158,6 @@ class BaseSolver(object):
                         model.eval()
                         HRs_before_np, NDCGs_before_np, AUC_before_np, eval_loss_before_np = \
                             self.metrics(run, 0, model, dataset)
-
                         print(
                             'Initial performance HR@10: {:.4f}, NDCG@10: {:.4f}, '
                             'AUC: {:.4f}, eval loss: {:.4f} \n'.format(
@@ -212,7 +210,6 @@ class BaseSolver(object):
 
                             model.eval()
                             HRs, NDCGs, AUC, eval_loss = self.metrics(run, epoch, model, dataset)
-
                             HRs_per_epoch_np = np.vstack([HRs_per_epoch_np, HRs])
                             NDCGs_per_epoch_np = np.vstack([NDCGs, HRs])
                             AUC_per_epoch_np = np.vstack([AUC_per_epoch_np, AUC])

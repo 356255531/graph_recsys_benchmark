@@ -510,7 +510,6 @@ class MovieLens(Dataset):
             idx = idx.to_list() if torch.is_tensor(idx) else idx
             return self.train_data[idx]
 
-
     def __setitem__(self, key, value):
         """Sets the attribute :obj:`key` to :obj:`value`."""
         if isinstance(key, str):
