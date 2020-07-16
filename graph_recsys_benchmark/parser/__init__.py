@@ -1,4 +1,4 @@
-from .parse_ml import parse_ml
+from .ml import parse_ml
 
 __all__ = [
     'parse_ml'

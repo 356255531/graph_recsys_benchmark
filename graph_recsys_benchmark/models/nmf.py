@@ -1,4 +1,5 @@
 import torch
+from torch import Tensor
 
 from .base import MFRecsysModel
 
@@ -35,15 +36,17 @@ class NMFRecsysModel(MFRecsysModel):
         for m in self.MLP_layers:
             if isinstance(m, torch.nn.Linear):
                 torch.nn.init.xavier_uniform_(m.weight)
-        torch.nn.init.kaiming_uniform_(self.predict_layer.weight,
-                                 a=1, nonlinearity='sigmoid')
+        torch.nn.init.kaiming_uniform_(
+            self.predict_layer.weight,
+            nonlinearity='sigmoid'
+        )
 
         for m in self.modules():
             if isinstance(m, torch.nn.Linear) and m.bias is not None:
                 m.bias.data.zero_()
 
     def forward(self, user_indices, item_indices):
-        embed_user_GMF = self.embed_user_GMF(user_indices)
+        embed_user_GMF: Tensor = self.embed_user_GMF(user_indices)
         embed_item_GMF = self.embed_item_GMF(item_indices)
         output_GMF = embed_user_GMF * embed_item_GMF
 

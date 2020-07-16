@@ -1,14 +1,21 @@
 from .gcn import GCNRecsysModel
+from .sage import SAGERecsysModel
 from .gat import GATRecsysModel
 from .nmf import NMFRecsysModel
-from .pagagcn import PAGAGCNRecsysModel
-from .pagagat import PAGAGATRecsysModel
+from .mpagcn import MPAGCNRecsysModel
+from .mpagat import MPAGATRecsysModel
+from .mpasage import MPASAGERecsysModel
+
+from .kgat import KGATRecsysModel
 
 
 __all__ = [
     'GCNRecsysModel',
+    'SAGERecsysModel',
     'GATRecsysModel',
     'NMFRecsysModel',
-    'PAGAGCNRecsysModel',
-    'PAGAGATRecsysModel'
+    'MPAGCNRecsysModel',
+    'MPAGATRecsysModel',
+    'MPASAGERecsysModel',
+    'KGATRecsysModel'
 ]

@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="graph_recsys_bencharm",  # Replace with your own username
+    name="graph_recsys_benchmark",  # Replace with your own username
     version="0.0.1",
     author="Zhiwei Han",
     author_email="han@fortiss.org",

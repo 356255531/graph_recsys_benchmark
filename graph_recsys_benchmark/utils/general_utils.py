@@ -4,16 +4,16 @@ import os
 import pickle
 import numpy as np
 
-from ..datasets import MovieLens
+from ..datasets import MovieLens, Yelp
 
 
 def get_folder_path(model, dataset, loss_type):
     data_folder = osp.join(
-        osp.dirname(osp.realpath(__file__)), '..', '..', 'checkpoint', 'data', dataset)
+        'checkpoint', 'data', dataset)
     weights_folder = osp.join(
-        osp.dirname(osp.realpath(__file__)), '..', '..', 'checkpoint', 'weights', dataset, model, loss_type)
+        'checkpoint', 'weights', dataset, model, loss_type)
     logger_folder = osp.join(
-        osp.dirname(osp.realpath(__file__)), '..', '..', 'checkpoint', 'loggers', dataset, model, loss_type)
+        'checkpoint', 'loggers', dataset, model, loss_type)
     data_folder = osp.expanduser(osp.normpath(data_folder))
     weights_folder = osp.expanduser(osp.normpath(weights_folder))
     logger_folder = osp.expanduser(osp.normpath(logger_folder))
@@ -93,5 +93,7 @@ def load_global_logger(global_logger_filepath):
 def load_dataset(dataset_args):
     if dataset_args['dataset'] == 'Movielens':
         return MovieLens(**dataset_args)
+    elif dataset_args['dataset'] == 'Yelp':
+        return Yelp(**dataset_args)
     else:
         raise NotImplemented('Dataset not implemented!')

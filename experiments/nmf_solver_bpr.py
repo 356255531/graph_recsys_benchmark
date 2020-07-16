@@ -22,17 +22,17 @@ parser.add_argument('--num_core', type=int, default=10, help='')
 parser.add_argument('--num_feat_core', type=int, default=10, help='')
 
 # Model params
-parser.add_argument('--factor_num', type=int, default=64, help='')
+parser.add_argument('--factor_num', type=int, default=8, help='')
 parser.add_argument('--dropout', type=float, default=0, help='')
 parser.add_argument('--num_layers', type=list, default=3, help='')
 
 # Train params
-parser.add_argument('--init_eval', type=str, default='true', help='')
+parser.add_argument('--init_eval', type=str, default='false', help='')
 parser.add_argument('--num_negative_samples', type=int, default=4, help='')
 parser.add_argument('--num_neg_candidates', type=int, default=99, help='')
 
 parser.add_argument('--device', type=str, default='cuda', help='')
-parser.add_argument('--gpu_idx', type=str, default='4', help='')
+parser.add_argument('--gpu_idx', type=str, default='5', help='')
 parser.add_argument('--runs', type=int, default=10, help='')
 parser.add_argument('--epochs', type=int, default=30, help='')
 parser.add_argument('--batch_size', type=int, default=256, help='')

@@ -17,7 +17,7 @@ class GATRecsysModel(GraphRecsysModel):
             self.x = torch.nn.Embedding(kwargs['dataset']['num_nodes'], kwargs['emb_dim'], max_norm=1).weight
         else:
             raise NotImplementedError('Feature not implemented!')
-        self.edge_index = self.update_graph_input(kwargs['dataset'])
+        self.update_graph_input(kwargs['dataset'])
 
         self.conv1 = GATConv(
             kwargs['emb_dim'],

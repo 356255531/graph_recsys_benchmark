@@ -2,6 +2,7 @@
 tmp/
 *.pkl
 weights/
+*.tar
 
 # Pycharm
 .DS_Store

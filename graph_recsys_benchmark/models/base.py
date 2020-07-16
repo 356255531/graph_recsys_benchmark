@@ -23,7 +23,8 @@ class GraphRecsysModel(torch.nn.Module):
 
     def eval(self):
         super(GraphRecsysModel, self).eval()
-        self.cached_repr = self.forward()
+        with torch.no_grad():
+            self.cached_repr = self.forward()
 
     def predict(self, unids, inids):
         u_repr = self.cached_repr[unids]
