@@ -9,7 +9,7 @@ from graph_recsys_benchmark.utils import get_folder_path
 from graph_recsys_benchmark.solvers import BaseSolver
 
 MODEL_TYPE = 'Graph'
-LOSS_TYPE = 'KGBPR'
+LOSS_TYPE = 'BPR'
 MODEL = 'KGAT'
 
 parser = argparse.ArgumentParser()
@@ -69,8 +69,7 @@ model_args = {
     'model_type': MODEL_TYPE,
     'if_use_features': args.if_use_features.lower() == 'true',
     'emb_dim': args.emb_dim, 'hidden_size': args.hidden_size,
-    'repr_dim': args.repr_dim, 'dropout': args.dropout,
-    'num_heads': args.num_heads
+    'dropout': args.dropout,
 }
 train_args = {
     'init_eval': args.init_eval.lower() == 'true',
@@ -115,7 +114,16 @@ class KGATRecsysModel(KGATRecsysModel):
         neg_pred = self.predict(batch[:, 0], batch[:, 2])
 
         cf_loss = -(pos_pred - neg_pred).sigmoid().log().sum()
-        kg_loss = -(self.x[self.edge_index[0]] + self.edge_vec[self.edge_attr[:, 0]] - self.x[self.edge_index[1]]).sigmoid().log().sum()
+
+        signs = torch.sign(self.edge_attr[:, 0])
+        signs[signs == 0] = 1
+        abs_val = torch.abs(self.edge_attr[:, 0])
+        kg_loss = -(
+                torch.mm(self.x[self.edge_index[0]], self.proj_mat) +
+                self.edge_type_vec[abs_val] * signs.view(-1, 1) -
+                torch.mm(self.x[self.edge_index[1]], self.proj_mat)
+                ).sigmoid().log().sum()
+
         loss = cf_loss + kg_loss
 
         return loss
