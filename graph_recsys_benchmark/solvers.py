@@ -145,8 +145,7 @@ class BaseSolver(object):
                     if not os.path.exists(weights_path):
                         os.makedirs(weights_path, exist_ok=True)
                     weights_file = os.path.join(weights_path, 'latest.pkl')
-                    model, optimizer, last_epoch, rec_metrics = load_model(weights_file, model, optimizer,
-                                                                           self.train_args['device'])
+                    model, optimizer, last_epoch, rec_metrics = load_model(weights_file, model, optimizer, self.train_args['device'])
                     HRs_per_epoch_np, NDCGs_per_epoch_np, AUC_per_epoch_np, train_loss_per_epoch_np, eval_loss_per_epoch_np = \
                         rec_metrics
 

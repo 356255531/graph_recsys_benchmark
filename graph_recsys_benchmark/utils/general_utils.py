@@ -4,7 +4,7 @@ import os
 import pickle
 import numpy as np
 
-from ..datasets import MovieLens, Yelp
+from ..datasets import MovieLens
 
 
 def get_folder_path(model, dataset, loss_type):
@@ -93,7 +93,7 @@ def load_global_logger(global_logger_filepath):
 def load_dataset(dataset_args):
     if dataset_args['dataset'] == 'Movielens':
         return MovieLens(**dataset_args)
-    elif dataset_args['dataset'] == 'Yelp':
-        return Yelp(**dataset_args)
+    # elif dataset_args['dataset'] == 'Yelp':
+    #     return Yelp(**dataset_args)
     else:
         raise NotImplemented('Dataset not implemented!')

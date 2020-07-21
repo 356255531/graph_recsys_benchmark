@@ -68,7 +68,12 @@ class MPAGCNRecsysModel(GraphRecsysModel):
     def forward(self):
         xs = [module(self.x, self.meta_path_edge_index_list[idx]) for idx, module in enumerate(self.mpagcn_channels)]
         if self.aggr == 'concat':
-            x = torch.cat(xs, dim=1)
+            x = x.view(x.shape[0], -1)
+        elif self.aggr == 'mean':
+            x = x.mean(dim=-2)
+        elif self.aggr == 'att':
+            atts = F.softmax(self.att(x).squeeze(-1), dim=-1).unsqueeze(-1)
+            x = torch.sum(x * atts, dim=-2)
         else:
             raise NotImplemented('Other aggr methods not implemeted!')
         x = F.normalize(x)

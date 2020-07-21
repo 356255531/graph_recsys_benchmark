@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv
+from torch_geometric.nn.inits import glorot
 
 from .base import GraphRecsysModel
 
@@ -72,6 +73,10 @@ class MPAGATRecsysModel(GraphRecsysModel):
     def reset_parameters(self):
         for module in self.mpagat_channels:
             module.reset_parameters()
+        glorot(self.fc1.weight)
+        glorot(self.fc2.weight)
+        if self.aggr == 'att':
+            glorot(self.att.weight)
 
     def forward(self):
         x = [module(self.x, self.meta_path_edge_index_list[idx]).unsqueeze(-2) for idx, module in enumerate(self.mpagat_channels)]

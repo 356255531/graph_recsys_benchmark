@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
-
+from torch_geometric.nn.inits import glorot
 
 from .base import GraphRecsysModel
 
@@ -28,15 +28,15 @@ class GCNRecsysModel(GraphRecsysModel):
 
     def reset_parameters(self):
         if not self.if_use_features:
-            torch.nn.init.uniform_(self.x, -1.0, 1.0)
+            glorot(self.x)
         self.conv1.reset_parameters()
         self.conv2.reset_parameters()
-        torch.nn.init.uniform_(self.fc1.weight, -1.0, 1.0)
-        torch.nn.init.uniform_(self.fc2.weight, -1.0, 1.0)
+        glorot(self.fc1.weight)
+        glorot(self.fc2.weight)
 
     def forward(self):
-        x = F.relu(self.conv1(self.x, self.edge_index))
+        x, edge_index = self.x, self.edge_index
+        x = F.relu(self.conv1(x, edge_index))
         x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.conv2(x, self.edge_index)
-        x = F.normalize(x)
+        x = self.conv2(x, edge_index)
         return x

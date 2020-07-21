@@ -487,7 +487,7 @@ class MovieLens(Dataset):
             train_edge_index_t = self.train_edge_index.repeat(1, self.num_negative_samples).view(-1, 2)
             train_data = torch.cat([train_edge_index_t, negative_inids_t], dim=-1)
         else:
-            raise NotImplementedError('No negateive sampling for model type: {}.'.format(self.loss_type))
+            raise NotImplementedError('No negateive sampling for loss type: {}.'.format(self.loss_type))
         shuffle_idx = torch.randperm(train_data.shape[0])
         self.train_data = train_data[shuffle_idx]
 

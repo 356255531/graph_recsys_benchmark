@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv
+from torch_geometric.nn.inits import glorot
 
 from .base import GraphRecsysModel
 
@@ -11,7 +12,7 @@ class GATRecsysModel(GraphRecsysModel):
 
     def _init(self, **kwargs):
         self.if_use_features = kwargs['if_use_features']
-        self.dropout = kwargs['dropout']
+        self.dropout = kwargs['propa_dropout']
 
         if not self.if_use_features:
             self.x = torch.nn.Embedding(kwargs['dataset']['num_nodes'], kwargs['emb_dim'], max_norm=1).weight
@@ -23,13 +24,13 @@ class GATRecsysModel(GraphRecsysModel):
             kwargs['emb_dim'],
             kwargs['hidden_size'],
             heads=kwargs['num_heads'],
-            dropout=kwargs['dropout']
+            dropout=kwargs['aggr_dropout']
         )
         self.conv2 = GATConv(
             kwargs['hidden_size'] * kwargs['num_heads'],
             kwargs['repr_dim'],
             heads=1,
-            dropout=kwargs['dropout']
+            dropout=kwargs['aggr_dropout']
         )
 
         self.fc1 = torch.nn.Linear(2 * kwargs['repr_dim'], kwargs['repr_dim'])
@@ -37,15 +38,16 @@ class GATRecsysModel(GraphRecsysModel):
 
     def reset_parameters(self):
         if not self.if_use_features:
-            torch.nn.init.uniform_(self.x, -1.0, 1.0)
+            glorot(self.x)
         self.conv1.reset_parameters()
         self.conv2.reset_parameters()
-        torch.nn.init.uniform_(self.fc1.weight, -1.0, 1.0)
-        torch.nn.init.uniform_(self.fc2.weight, -1.0, 1.0)
+        glorot(self.fc1.weight)
+        glorot(self.fc2.weight)
 
     def forward(self):
-        x = F.relu(self.conv1(self.x, self.edge_index))
+        x, edge_index = self.x, self.edge_index
         x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.conv2(x, self.edge_index)
-        x = F.normalize(x)
+        x = F.elu(self.conv1(x, edge_index))
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        x = self.conv2(x, edge_index)
         return x
