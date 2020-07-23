@@ -64,7 +64,7 @@ class BaseSolver(object):
             if self.model_args['model_type'] == 'MF':
                 pos_neg_pair_t[:, 0] -= dataset.e2nid_dict['uid'][0]
                 pos_neg_pair_t[:, 1:] -= dataset.e2nid_dict['iid'][0]
-            loss = model.loss(pos_neg_pair_t).detach().cpu().item()
+            loss = model.cf_loss(pos_neg_pair_t).detach().cpu().item()
 
             pos_u_nids_t = torch.from_numpy(np.array([u_nid for _ in range(len(pos_i_nids))])).to(self.train_args['device'])
             pos_i_nids_t = torch.from_numpy(np.array(pos_i_nids)).to(self.train_args['device'])
@@ -177,14 +177,14 @@ class BaseSolver(object):
                             loss_per_batch = []
 
                             model.train()
-                            dataset.negative_sampling()
-                            recsys_train_dataloader = DataLoader(
+                            dataset.cf_negative_sampling()
+                            train_dataloader = DataLoader(
                                 dataset,
                                 shuffle=True,
                                 batch_size=self.train_args['batch_size'],
                                 num_workers=self.train_args['num_workers']
                             )
-                            train_bar = tqdm.tqdm(recsys_train_dataloader, total=len(recsys_train_dataloader))
+                            train_bar = tqdm.tqdm(train_dataloader, total=len(train_dataloader))
 
                             for _, batch in enumerate(train_bar):
                                 if self.model_args['model_type'] == 'MF':

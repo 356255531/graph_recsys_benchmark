@@ -281,6 +281,11 @@ def generate_graph_data(
     dataset_property_dict['neg_unid_inid_map'] = \
         train_pos_unid_inid_map, test_pos_unid_inid_map, neg_unid_inid_map
 
+    print('Building edge type map...')
+    edge_type_dict = {edge_type: edge_type_idx for edge_type_idx, edge_type in enumerate(list(edge_index_nps.keys()))}
+    dataset_property_dict['edge_type_dict'] = edge_type_dict
+    dataset_property_dict['num_edge_types'] = len(list(edge_index_nps.keys()))
+
     print('Building the item occurrence map...')
     item_nid_occs = {}
     for iid in items.iid:
@@ -308,8 +313,9 @@ class MovieLens(Dataset):
         self.seed = kwargs['seed']
         self.num_negative_samples = kwargs['num_negative_samples']
         self.suffix = self.build_suffix()
-        self.loss_type = kwargs['loss_type']
-        self._negative_sampling = kwargs['_negative_sampling']
+        self.cf_loss_type = kwargs['cf_loss_type']
+        self._cf_negative_sampling = kwargs['_cf_negative_sampling']
+        self.kg_loss_type = kwargs.get('kg_loss_type', None)
 
         super(MovieLens, self).__init__(root, transform, pre_transform, pre_filter)
 
@@ -317,13 +323,6 @@ class MovieLens(Dataset):
             dataset_property_dict = pickle.load(f)
         for k, v in dataset_property_dict.items():
             self[k] = v
-        self.train_edge_index = torch.from_numpy(self.edge_index_nps['user2item'].T).long()
-        self.num_pos_train_edges = self.train_edge_index.shape[0]
-
-        if self.loss_type == 'BCE':
-            self.length = self.num_pos_train_edges * (self.num_negative_samples + 1)
-        elif self.loss_type == 'BPR':
-            self.length = self.num_pos_train_edges * self.num_negative_samples
 
         print('Dataset loaded!')
 
@@ -426,73 +425,93 @@ class MovieLens(Dataset):
             suffix = '_'.join(suffixes)
         return '_' + suffix
 
-    def negative_sampling(self):
-        if self.loss_type == 'BCE':
-            pos_train_edge = torch.cat(
-                [
-                    self.train_edge_index,
-                    torch.ones((self.num_pos_train_edges, 1)).long()
-                ],
-                dim=-1
-            )
-
-            u_nids = self.train_edge_index[:, 0].tolist()
-            negative_inids = []
-            p_bar = tqdm.tqdm(u_nids)
-            for u_nid in p_bar:
-                negative_inids.append(
-                    self._negative_sampling(
-                        u_nid,
-                        self.num_negative_samples,
-                        (
-                            self.train_pos_unid_inid_map,
-                            self.test_pos_unid_inid_map,
-                            self.neg_unid_inid_map
-                        ),
-                        self.item_nid_occs
-                    )
-                )
-                p_bar.set_description('Negative sampling...')
-            negative_inids_t = torch.from_numpy(np.vstack(negative_inids).reshape(-1, 1))
-            negative_train_edges = torch.cat(
-                [
-                    self.train_edge_index[:, 0].repeat(self.num_negative_samples).reshape(-1, 1),
-                    negative_inids_t,
-                    torch.zeros((self.num_pos_train_edges * self.num_negative_samples, 1)).long()
-                ],
-                dim=-1
-            )
-
-            train_data = torch.cat([pos_train_edge, negative_train_edges], dim=0)
-        elif self.loss_type == 'BPR':
-            u_nids = self.train_edge_index[:, 0].tolist()
-            negative_inids = []
-            p_bar = tqdm.tqdm(u_nids)
-            for u_nid in p_bar:
-                negative_inids.append(
-                    self._negative_sampling(
-                        u_nid,
-                        self.num_negative_samples,
-                        (
-                            self.train_pos_unid_inid_map,
-                            self.test_pos_unid_inid_map,
-                            self.neg_unid_inid_map
-                        ),
-                        self.item_nid_occs
-                    )
-                )
-                p_bar.set_description('Negative sampling...')
-            negative_inids_t = torch.from_numpy(np.vstack(negative_inids).reshape(-1, 1))
-
-            train_edge_index_t = self.train_edge_index.repeat(1, self.num_negative_samples).view(-1, 2)
-            train_data = torch.cat([train_edge_index_t, negative_inids_t], dim=-1)
+    def kg_negative_sampling(self):
+        print('KG negative sampling...')
+        pos_edge_index_r_nps = [
+            (edge_index, np.ones((edge_index.shape[1], 1)) * self.edge_type_dict[edge_type])
+            for edge_type, edge_index in self.edge_index_nps.items()
+        ]
+        pos_edge_index_trans_np = np.hstack([_[0] for _ in pos_edge_index_r_nps]).T
+        pos_r_np = np.vstack([_[1] for _ in pos_edge_index_r_nps])
+        neg_t_np = np.random.randint(low=0, high=self.num_nodes, size=(pos_edge_index_trans_np.shape[0], 1))
+        if self.cf_loss_type == 'BCE':
+            pos_samples_np = np.hstack([pos_edge_index_trans_np, pos_r_np])
+            neg_samples_np = np.hstack([pos_edge_index_trans_np[:, 0], neg_t_np, pos_r_np])
+            train_data_np = np.vstack([pos_samples_np, neg_samples_np])
+        elif self.cf_loss_type == 'BPR':
+            train_data_np = np.hstack([pos_edge_index_trans_np, neg_t_np, pos_r_np])
         else:
-            raise NotImplementedError('No negateive sampling for loss type: {}.'.format(self.loss_type))
-        shuffle_idx = torch.randperm(train_data.shape[0])
-        self.train_data = train_data[shuffle_idx]
+            raise NotImplementedError('KG loss type not specified or not implemented!')
+        train_data_t = torch.from_numpy(train_data_np).long()
+        shuffle_idx = torch.randperm(train_data_t.shape[0])
+        self.train_data = train_data_t[shuffle_idx]
+        self.train_data_length = train_data_t.shape[0]
+
+    def cf_negative_sampling(self):
+        print('CF negative sampling...')
+        pos_edge_index_trans_np = self.edge_index_nps['user2item'].T
+        if self.cf_loss_type == 'BCE':
+            pos_samples_np = np.hstack([pos_edge_index_trans_np, np.ones((pos_edge_index_trans_np.shape[0], 1))])
+
+            neg_inids = []
+            u_nids = pos_samples_np[:, 0]
+            p_bar = tqdm.tqdm(u_nids)
+            for u_nid in p_bar:
+                neg_inids.append(
+                    self._cf_negative_sampling(
+                        u_nid,
+                        self.num_negative_samples,
+                        (
+                            self.train_pos_unid_inid_map,
+                            self.test_pos_unid_inid_map,
+                            self.neg_unid_inid_map
+                        ),
+                        self.item_nid_occs
+                    )
+                )
+            neg_inids_np = np.vstack(neg_inids)
+            neg_samples_np = np.hstack(
+                [
+                    np.repeat(pos_samples_np[:, 0].reshape(-1, 1), repeats=self.num_negative_samples, axis=0),
+                    neg_inids_np,
+                    torch.zeros((neg_inids_np.shape[0], 1)).long()
+                ]
+            )
+
+            train_data_np = np.vstack([pos_samples_np, neg_samples_np])
+        elif self.cf_loss_type == 'BPR':
+            neg_inids = []
+            u_nids = pos_edge_index_trans_np[:, 0]
+            p_bar = tqdm.tqdm(u_nids)
+            for u_nid in p_bar:
+                neg_inids.append(
+                    self._cf_negative_sampling(
+                        u_nid,
+                        self.num_negative_samples,
+                        (
+                            self.train_pos_unid_inid_map,
+                            self.test_pos_unid_inid_map,
+                            self.neg_unid_inid_map
+                        ),
+                        self.item_nid_occs
+                    )
+                )
+
+            train_data_np = np.hstack(
+                [
+                    np.repeat(pos_edge_index_trans_np, repeats=self.num_negative_samples, axis=0),
+                    np.vstack(neg_inids)
+                ]
+            )
+        else:
+            raise NotImplementedError('No negateive sampling for loss type: {}.'.format(self.cf_loss_type))
+        train_data_t = torch.from_numpy(train_data_np).long()
+        shuffle_idx = torch.randperm(train_data_t.shape[0])
+        self.train_data = train_data_t[shuffle_idx]
+        self.train_data_length = train_data_t.shape[0]
 
     def __len__(self):
-        return self.length
+        return self.train_data_length
 
     def __getitem__(self, idx):
         r"""Gets the data object at index :obj:`idx` and transforms it (in case

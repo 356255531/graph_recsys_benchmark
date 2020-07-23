@@ -18,9 +18,8 @@ class KGATRecsysModel(GraphRecsysModel):
             self.x = torch.nn.Embedding(kwargs['dataset']['num_nodes'], kwargs['emb_dim'], max_norm=1).weight
         else:
             raise NotImplementedError('Feature not implemented!')
-        self.edge_type_vec = torch.nn.Embedding(len(list(kwargs['dataset'].edge_index_nps.values())), kwargs['emb_dim'], max_norm=1).weight
-        self.proj_mat = torch.nn.Parameter(
-            torch.Tensor(kwargs['emb_dim'], kwargs['emb_dim']))
+        self.edge_type_vec = torch.nn.Embedding(kwargs['dataset'].num_edge_types, kwargs['repr_dim'], max_norm=1).weight
+        self.proj_mat = torch.nn.Parameter(torch.Tensor(kwargs['emb_dim'], kwargs['repr_dim']))
         self.update_graph_input(kwargs['dataset'])
 
         self.conv1 = KGATConv(
@@ -45,6 +44,8 @@ class KGATRecsysModel(GraphRecsysModel):
     def reset_parameters(self):
         if not self.if_use_features:
             glorot(self.x)
+        glorot(self.edge_type_vec)
+        glorot(self.proj_mat)
         self.conv1.reset_parameters()
         self.conv2.reset_parameters()
         self.conv3.reset_parameters()

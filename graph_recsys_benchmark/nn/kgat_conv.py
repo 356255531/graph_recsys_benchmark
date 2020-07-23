@@ -48,7 +48,7 @@ class KGATConv(MessagePassing):
             signs[signs == 0] = 1
             abs_val = torch.abs(edge_attr[:, 0])
             trans_vec = edge_type_vec[abs_val] * signs.view(-1, 1)
-            alpha = (torch.mm(x_i, proj_mat) * F.tanh(torch.mm(x_j, proj_mat) + trans_vec)).sum(-1)
+            alpha = (torch.mm(x_i, proj_mat) * torch.tanh(torch.mm(x_j, proj_mat) + trans_vec)).sum(-1).detach()
         else:
             raise NotImplementedError('x_i is None!')
 
