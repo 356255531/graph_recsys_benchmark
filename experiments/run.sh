@@ -7,3 +7,5 @@ screen -dmS sage_solver_bpr python3.7 sage_solver_bpr.py --emb_dim=32 --hidden_s
 screen -dmS mpagat_solver_bpr python3.7 mpagat_solver_bpr.py --emb_dim=32 --hidden_size=64 --repr_dim=16  --aggr='att' --epochs=50 --gpu_idx='5'
 screen -dmS mpagat_solver_bpr python3.7 mpagat_solver_bpr.py --emb_dim=32 --hidden_size=64 --repr_dim=16  --aggr='mean' --epochs=50 --gpu_idx='6'
 screen -dmS mpagat_solver_bpr python3.7 mpagat_solver_bpr.py --emb_dim=32 --hidden_size=64 --repr_dim=16  --aggr='concat' --epochs=50 --gpu_idx='7'
+
+screen -dmS kgat_solver python3.7 kgat_solver.py --emb_dim=64 --epochs=50 --gpu_idx='0'

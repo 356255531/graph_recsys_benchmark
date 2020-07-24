@@ -95,7 +95,7 @@ class BaseSolver(object):
                     eval_losses.mean(axis=0)[0])
             )
 
-        return HRs.mean(axis=0), NDCGs.mean(axis=0), AUC.mean(axis=0)[0], eval_losses.mean(axis=0)[0]
+        return np.mean(HRs, axis=0), np.mean(NDCGs, axis=0), np.mean(AUC, axis=0), np.mean(eval_losses, axis=0)
 
     def run(self):
         global_logger_path = self.train_args['logger_folder']
@@ -155,18 +155,18 @@ class BaseSolver(object):
                     start_epoch = last_epoch + 1
                     if start_epoch == 1 and self.train_args['init_eval']:
                         model.eval()
-                        HRs_before_np, NDCGs_before_np, AUC_before_np, eval_loss_before_np = \
+                        HRs_before_np, NDCGs_before_np, AUC_before_np, cf_eval_loss_before_np = \
                             self.metrics(run, 0, model, dataset)
                         print(
                             'Initial performance HR@10: {:.4f}, NDCG@10: {:.4f}, '
                             'AUC: {:.4f}, eval loss: {:.4f} \n'.format(
-                                HRs_before_np[5], NDCGs_before_np[5], AUC_before_np, eval_loss_before_np
+                                HRs_before_np[5], NDCGs_before_np[5], AUC_before_np[0], cf_eval_loss_before_np[0]
                             )
                         )
                         logger_file.write(
                             'Initial performance HR@10: {:.4f}, NDCG@10: {:.4f}, '
                             'AUC: {:.4f}, eval loss: {:.4f} \n'.format(
-                                HRs_before_np[5], NDCGs_before_np[5], AUC_before_np, eval_loss_before_np
+                                HRs_before_np[5], NDCGs_before_np[5], AUC_before_np[0], cf_eval_loss_before_np[0]
                             )
                         )
 
@@ -242,11 +242,11 @@ class BaseSolver(object):
                             torch.cuda.synchronize()
                     t_end = time.perf_counter()
 
-                    HRs_per_run_np = np.vstack([HRs_per_run_np, HRs_per_epoch_np[-1]])
-                    NDCGs_per_run_np = np.vstack([NDCGs_per_run_np, NDCGs_per_epoch_np[-1]])
-                    AUC_per_run_np = np.vstack([AUC_per_run_np, AUC_per_epoch_np[-1]])
-                    train_loss_per_run_np = np.vstack([train_loss_per_run_np, train_loss_per_epoch_np[-1]])
-                    eval_loss_per_run_np = np.vstack([eval_loss_per_run_np, eval_loss_per_epoch_np[-1]])
+                    HRs_per_run_np = np.vstack([HRs_per_run_np, np.max(HRs_per_epoch_np, axis=0)])
+                    NDCGs_per_run_np = np.vstack([NDCGs_per_run_np, np.max(NDCGs_per_epoch_np, axis=0)])
+                    AUC_per_run_np = np.vstack([AUC_per_run_np, np.max(AUC_per_epoch_np, axis=0)])
+                    train_loss_per_run_np = np.vstack([train_loss_per_run_np, np.mean(train_loss_per_epoch_np, axis=0)])
+                    eval_loss_per_run_np = np.vstack([eval_loss_per_run_np, np.mean(eval_loss_per_epoch_np, axis=0)])
 
                     save_global_logger(
                         global_logger_file_path,

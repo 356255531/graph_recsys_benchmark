@@ -9,17 +9,16 @@ from torch_geometric.nn.inits import glorot, zeros
 
 class KGATConv(MessagePassing):
     def __init__(self, in_channels, out_channels,
-                 negative_slope=0.2, dropout=0, bias=True, **kwargs):
+                 negative_slope=0.2, bias=True, **kwargs):
         super(KGATConv, self).__init__(aggr='add', **kwargs)
 
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.negative_slope = negative_slope
-        self.dropout = dropout
 
-        self.weight_plus = Parameter(
+        self.weight_add = Parameter(
             torch.Tensor(in_channels, out_channels))
-        self.weight_dot = Parameter(
+        self.weight_bi = Parameter(
             torch.Tensor(in_channels, out_channels))
 
         if bias:
@@ -30,8 +29,8 @@ class KGATConv(MessagePassing):
         self.reset_parameters()
 
     def reset_parameters(self):
-        glorot(self.weight_plus)
-        glorot(self.weight_dot)
+        glorot(self.weight_add)
+        glorot(self.weight_bi)
         zeros(self.bias)
 
     def forward(self, x, edge_index, edge_attr, edge_type_vec, proj_mat, size=None):
@@ -57,11 +56,11 @@ class KGATConv(MessagePassing):
         return x_j * alpha.view(-1, 1)
 
     def update(self, aggr_out, x):
-        plus_res = x + aggr_out
-        dot_res = x * aggr_out
-        plus_res = torch.mm(plus_res, self.weight_plus)
-        dot_res = torch.mm(dot_res, self.weight_dot)
-        aggr_out = F.leaky_relu(plus_res, negative_slope=self.negative_slope) + F.leaky_relu(dot_res, negative_slope=self.negative_slope)
+        add_aggr = x + aggr_out
+        add_aggr = F.leaky_relu(torch.mm(add_aggr, self.weight_add), negative_slope=self.negative_slope)
+        bi_aggr = x * aggr_out
+        bi_aggr = F.leaky_relu(torch.mm(bi_aggr, self.weight_bi), negative_slope=self.negative_slope)
+        aggr_out = add_aggr + bi_aggr
         if self.bias is not None:
             aggr_out = aggr_out + self.bias
         return aggr_out
