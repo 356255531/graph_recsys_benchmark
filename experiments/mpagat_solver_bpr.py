@@ -66,7 +66,7 @@ dataset_args = {
     'root': data_folder, 'dataset': args.dataset, 'name': args.dataset_name,
     'if_use_features': args.if_use_features.lower() == 'true', 'num_negative_samples': args.num_negative_samples,
     'num_core': args.num_core, 'num_feat_core': args.num_feat_core,
-    'loss_type': LOSS_TYPE
+    'cf_loss_type': LOSS_TYPE
 }
 model_args = {
     'model_type': MODEL_TYPE,
@@ -92,7 +92,7 @@ print('task params: {}'.format(model_args))
 print('train params: {}'.format(train_args))
 
 
-def _negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_occs):
+def _cf_negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_occs):
     '''
     The negative sampling methods used for generating the training batches
     :param u_nid:
@@ -108,7 +108,7 @@ def _negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_occ
     negative_inids = test_pos_unid_inid_map[u_nid] + neg_unid_inid_map[u_nid]
     negative_inids = rd.choices(population=negative_inids, k=num_negative_samples)
 
-    return negative_inids
+    return np.array(negative_inids).reshape(-1, 1)
 
 
 class MPAGATRecsysModel(MPAGATRecsysModel):
@@ -168,6 +168,6 @@ class PAGAGATSolver(BaseSolver):
 
 
 if __name__ == '__main__':
-    dataset_args['_negative_sampling'] = _negative_sampling
+    dataset_args['_cf_negative_sampling'] = _cf_negative_sampling
     solver = PAGAGATSolver(MPAGATRecsysModel, dataset_args, model_args, train_args)
     solver.run()

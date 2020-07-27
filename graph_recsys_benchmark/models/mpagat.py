@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from torch_geometric.nn import GATConv
+from graph_recsys_benchmark.nn import MPAGATConv
 from torch_geometric.nn.inits import glorot
 
 from .base import GraphRecsysModel
@@ -14,12 +14,12 @@ class MPAGATChannel(torch.nn.Module):
 
         self.gat_layers = torch.nn.ModuleList()
         if kwargs['num_steps'] >= 2:
-            self.gat_layers.append(GATConv(kwargs['emb_dim'], kwargs['hidden_size'], heads=kwargs['num_heads'], dropout=kwargs['dropout']))
+            self.gat_layers.append(MPAGATConv(kwargs['emb_dim'], kwargs['hidden_size'], heads=kwargs['num_heads'], dropout=kwargs['dropout']))
             for i in range(kwargs['num_steps'] - 2):
-                self.gat_layers.append(GATConv(kwargs['hidden_size'] * kwargs['num_heads'], kwargs['hidden_size'], heads=kwargs['num_heads'], dropout=kwargs['dropout']))
-            self.gat_layers.append(GATConv(kwargs['hidden_size'] * kwargs['num_heads'], kwargs['repr_dim'], heads=1, dropout=kwargs['dropout']))
+                self.gat_layers.append(MPAGATConv(kwargs['hidden_size'] * kwargs['num_heads'], kwargs['hidden_size'], heads=kwargs['num_heads'], dropout=kwargs['dropout']))
+            self.gat_layers.append(MPAGATConv(kwargs['hidden_size'] * kwargs['num_heads'], kwargs['repr_dim'], heads=1, dropout=kwargs['dropout']))
         else:
-            self.gat_layers.append(GATConv(kwargs['emb_dim'], kwargs['repr_dim'], heads=1, dropout=kwargs['dropout']))
+            self.gat_layers.append(MPAGATConv(kwargs['emb_dim'], kwargs['repr_dim'], heads=1, dropout=kwargs['dropout']))
 
         self.reset_parameters()
 

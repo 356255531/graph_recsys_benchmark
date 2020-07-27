@@ -21,7 +21,8 @@ class GCNRecsysModel(GraphRecsysModel):
         self.x, self.edge_index = self.update_graph_input(kwargs['dataset'])
 
         self.conv1 = GCNConv(kwargs['emb_dim'], kwargs['hidden_size'])
-        self.conv2 = GCNConv(kwargs['hidden_size'], kwargs['repr_dim'])
+        self.conv2 = GCNConv(kwargs['hidden_size'], kwargs['hidden_size'])
+        self.conv3 = GCNConv(kwargs['hidden_size'], kwargs['repr_dim'])
 
         self.fc1 = torch.nn.Linear(2 * kwargs['repr_dim'], kwargs['repr_dim'])
         self.fc2 = torch.nn.Linear(kwargs['repr_dim'], 1)
@@ -36,7 +37,13 @@ class GCNRecsysModel(GraphRecsysModel):
 
     def forward(self):
         x, edge_index = self.x, self.edge_index
-        x = F.relu(self.conv1(x, edge_index))
-        x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.conv2(x, edge_index)
+        x = F.normalize(F.dropout(self.conv1(x, edge_index), p=self.dropout, training=self.training), p=2, dim=-1)
+        x = F.normalize(F.dropout(self.conv2(x, edge_index), p=self.dropout,training=self.training), p=2, dim=-1)
+        x = F.normalize(F.dropout(self.conv3(x, edge_index), p=self.dropout,training=self.training), p=2, dim=-1)
+        return x
+
+    def predict(self, unids, inids):
+        u_repr = self.cached_repr[unids]
+        i_repr = self.cached_repr[inids]
+        x = torch.sum(u_repr * i_repr, dim=-1)
         return x
