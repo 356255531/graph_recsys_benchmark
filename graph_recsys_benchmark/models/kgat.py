@@ -24,16 +24,16 @@ class KGATRecsysModel(GraphRecsysModel):
         self.update_graph_input(kwargs['dataset'])
 
         self.conv1 = KGATConv(
-            kwargs['emb_dim'] // 3,
-            kwargs['emb_dim'] // 3,
+            64,#kwargs['emb_dim'] // 3,
+            32,#kwargs['emb_dim'] // 3,
         )
         self.conv2 = KGATConv(
-            kwargs['emb_dim'] // 3,
-            kwargs['emb_dim'] // 3,
+            32,#kwargs['emb_dim'] // 3,
+            16,#kwargs['emb_dim'] // 3,
         )
         self.conv3 = KGATConv(
-            kwargs['emb_dim'] // 3,
-            kwargs['emb_dim'] // 3,
+            16,#kwargs['emb_dim'] // 3,
+            16,#kwargs['emb_dim'] // 3,
         )
 
     def reset_parameters(self):
