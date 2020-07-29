@@ -29,6 +29,7 @@ parser.add_argument('--num_feat_core', type=int, default=10, help='')
 # Model params
 parser.add_argument('--dropout', type=float, default=0, help='')
 parser.add_argument('--emb_dim', type=int, default=64, help='')
+parser.add_argument('--hidden_size', type=int, default=64, help='')
 # Train params
 parser.add_argument('--init_eval', type=str, default='false', help='')
 parser.add_argument('--num_negative_samples', type=int, default=4, help='')
@@ -36,8 +37,8 @@ parser.add_argument('--num_neg_candidates', type=int, default=99, help='')
 
 parser.add_argument('--device', type=str, default='cuda', help='')
 parser.add_argument('--gpu_idx', type=str, default='0', help='')
-parser.add_argument('--runs', type=int, default=10, help='')
-parser.add_argument('--epochs', type=int, default=50, help='')
+parser.add_argument('--runs', type=int, default=5, help='')
+parser.add_argument('--epochs', type=int, default=30, help='')
 parser.add_argument('--batch_size', type=int, default=1024, help='')
 parser.add_argument('--num_workers', type=int, default=4, help='')
 parser.add_argument('--opt', type=str, default='adam', help='')
@@ -69,7 +70,7 @@ dataset_args = {
 model_args = {
     'model_type': MODEL_TYPE,
     'if_use_features': args.if_use_features.lower() == 'true',
-    'emb_dim': args.emb_dim,
+    'emb_dim': args.emb_dim, 'hidden_size': args.hidden_size,
     'dropout': args.dropout,
 }
 train_args = {
@@ -123,7 +124,7 @@ class KGATRecsysModel(KGATRecsysModel):
         pos_t = self.x[batch[:, 1]]
         neg_t = self.x[batch[:, 2]]
 
-        r = self.edge_type_vec[batch[:, 3]]
+        r = self.r[batch[:, 3]]
         pos_diff = torch.mm(h, self.proj_mat) + r - torch.mm(pos_t, self.proj_mat)
         neg_diff = torch.mm(h, self.proj_mat) + r - torch.mm(neg_t, self.proj_mat)
 
@@ -145,8 +146,10 @@ class KGATRecsysModel(KGATRecsysModel):
         edge_index_np = np.hstack([edge_index_np, np.flip(edge_index_np, 0)])
         r_np = np.vstack([r_np, -r_np])
 
-        self.edge_index = torch.from_numpy(edge_index_np).long().to(train_args['device'])
-        self.edge_attr = torch.from_numpy(r_np).long().to(train_args['device'])
+        edge_index = torch.from_numpy(edge_index_np).long().to(train_args['device'])
+        edge_attr = torch.from_numpy(r_np).long().to(train_args['device'])
+
+        return edge_index, edge_attr
 
 
 class KGATSolver(BaseSolver):

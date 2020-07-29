@@ -64,7 +64,7 @@ class BaseSolver(object):
             if self.model_args['model_type'] == 'MF':
                 pos_neg_pair_t[:, 0] -= dataset.e2nid_dict['uid'][0]
                 pos_neg_pair_t[:, 1:] -= dataset.e2nid_dict['iid'][0]
-            loss = model.cf_loss(pos_neg_pair_t).detach().cpu().item()
+            loss = model.loss(pos_neg_pair_t).detach().cpu().item()
 
             pos_u_nids_t = torch.from_numpy(np.array([u_nid for _ in range(len(pos_i_nids))])).to(self.train_args['device'])
             pos_i_nids_t = torch.from_numpy(np.array(pos_i_nids)).to(self.train_args['device'])
@@ -234,7 +234,7 @@ class BaseSolver(object):
                             logger_file.write(
                                 'Run: {}, epoch: {}, HR@10: {:.4f}, NDCG@10: {:.4f}, AUC: {:.4f}, '
                                 'train loss: {:.4f}, eval loss: {:.4f} \n'.format(
-                                    run, epoch, HRs[5], NDCGs[5], AUC, train_loss, eval_loss
+                                    run, epoch, HRs[5], NDCGs[5], AUC[0], train_loss, eval_loss[0]
                                 )
                             )
 

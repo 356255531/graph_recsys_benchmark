@@ -22,11 +22,10 @@ parser.add_argument('--num_core', type=int, default=10, help='')
 parser.add_argument('--num_feat_core', type=int, default=10, help='')
 
 # Model params
-parser.add_argument('--dropout', type=float, default=0, help='')
-parser.add_argument('--emb_dim', type=int, default=8, help='')
+parser.add_argument('--dropout', type=float, default=0.5, help='')
+parser.add_argument('--emb_dim', type=int, default=64, help='')
 parser.add_argument('--num_heads', type=int, default=1, help='')
-parser.add_argument('--repr_dim', type=int, default=8, help='')
-parser.add_argument('--hidden_size', type=int, default=16, help='')
+parser.add_argument('--hidden_size', type=int, default=64, help='')
 # Train params
 parser.add_argument('--init_eval', type=str, default='false', help='')
 parser.add_argument('--num_negative_samples', type=int, default=4, help='')
@@ -34,9 +33,9 @@ parser.add_argument('--num_neg_candidates', type=int, default=99, help='')
 
 parser.add_argument('--device', type=str, default='cuda', help='')
 parser.add_argument('--gpu_idx', type=str, default='1', help='')
-parser.add_argument('--runs', type=int, default=10, help='')
+parser.add_argument('--runs', type=int, default=5, help='')
 parser.add_argument('--epochs', type=int, default=30, help='')
-parser.add_argument('--batch_size', type=int, default=4096, help='')
+parser.add_argument('--batch_size', type=int, default=1028, help='')
 parser.add_argument('--num_workers', type=int, default=4, help='')
 parser.add_argument('--opt', type=str, default='adam', help='')
 parser.add_argument('--lr', type=float, default=0.001, help='')
@@ -63,13 +62,13 @@ dataset_args = {
     'root': data_folder, 'dataset': args.dataset, 'name': args.dataset_name,
     'if_use_features': args.if_use_features.lower() == 'true', 'num_negative_samples': args.num_negative_samples,
     'num_core': args.num_core, 'num_feat_core': args.num_feat_core,
-    'loss_type': LOSS_TYPE
+    'cf_loss_type': LOSS_TYPE
 }
 model_args = {
     'model_type': MODEL_TYPE,
     'if_use_features': args.if_use_features.lower() == 'true',
     'emb_dim': args.emb_dim, 'hidden_size': args.hidden_size,
-    'repr_dim': args.repr_dim, 'dropout': args.dropout,
+    'dropout': args.dropout,
     'num_heads': args.num_heads
 }
 train_args = {
@@ -104,7 +103,7 @@ def _negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_occ
     negative_inids = test_pos_unid_inid_map[u_nid] + neg_unid_inid_map[u_nid]
     negative_inids = rd.choices(population=negative_inids, k=num_negative_samples)
 
-    return negative_inids
+    return np.array(negative_inids).reshape(-1, 1)
 
 
 class GATRecsysModel(GATRecsysModel):
@@ -139,6 +138,6 @@ class GATSolver(BaseSolver):
 
 
 if __name__ == '__main__':
-    dataset_args['_negative_sampling'] = _negative_sampling
+    dataset_args['_cf_negative_sampling'] = _negative_sampling
     solver = GATSolver(GATRecsysModel, dataset_args, model_args, train_args)
     solver.run()

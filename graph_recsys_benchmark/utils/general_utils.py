@@ -84,6 +84,7 @@ def load_model(file_path, model, optim, device):
 
 def load_kgat_model(file_path, model, optim, device):
     if os.path.isfile(file_path):
+
         checkpoint = torch.load(file_path, map_location=device)
         epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['model_states']['model'])
