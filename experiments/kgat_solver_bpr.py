@@ -376,8 +376,9 @@ class KGATSolver(BaseSolver):
                         kg_eval_loss_per_run_np, cf_eval_loss_per_run_np
                     )
                     print(
-                        'Run: {}, Duration: {:.4f}, HR@10: {:.4f}, NDCG@10: {:.4f}, AUC: {:.4f}, '
-                        'train_loss: {:.4f}, eval loss: {:.4f}\n'.format(
+                        'Run: {}, Duration: {:.4f}, HR@10: {:.4f}, NDCG@10: {:.4f}, AUC: {:.4f}, \
+                        kg_train_loss: {:.4f}, cf_train_loss: {:.4f}, kg_eval_loss: {:.4f}, cf_eval_loss: {:.4f}\
+                        \n'.format(
                             run, t_end - t_start,
                             HRs_per_epoch_np[-1][5], NDCGs_per_epoch_np[-1][5], AUC_per_epoch_np[-1][0],
                             kg_train_loss_per_epoch_np[-1][0], cf_train_loss_per_epoch_np[-1][0],
@@ -385,8 +386,9 @@ class KGATSolver(BaseSolver):
                         )
                     )
                     logger_file.write(
-                        'Run: {}, Duration: {:.4f}, HR@10: {:.4f}, NDCG@10: {:.4f}, AUC: {:.4f}, '
-                        'train_loss: {:.4f}, eval loss: {:.4f}\n'.format(
+                        'Run: {}, Duration: {:.4f}, HR@10: {:.4f}, NDCG@10: {:.4f}, AUC: {:.4f}, \
+                        kg_train_loss: {:.4f}, cf_train_loss: {:.4f}, kg_eval_loss: {:.4f}, cf_eval_loss: {:.4f}\
+                        \n'.format(
                             run, t_end - t_start,
                             HRs_per_epoch_np[-1][5], NDCGs_per_epoch_np[-1][5], AUC_per_epoch_np[-1][0],
                             kg_train_loss_per_epoch_np[-1][0], cf_train_loss_per_epoch_np[-1][0],
