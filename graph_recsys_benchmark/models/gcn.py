@@ -37,9 +37,3 @@ class GCNRecsysModel(GraphRecsysModel):
         x_2 = F.normalize(F.dropout(self.conv2(x_1, edge_index), p=self.dropout, training=self.training), p=2, dim=-1)
         x_3 = F.normalize(F.dropout(self.conv3(x_2, edge_index), p=self.dropout, training=self.training), p=2, dim=-1)
         return torch.cat([x_1, x_2, x_3], dim=-1)
-
-    def predict(self, unids, inids):
-        u_repr = self.cached_repr[unids]
-        i_repr = self.cached_repr[inids]
-        x = torch.sum(u_repr * i_repr, dim=-1)
-        return x

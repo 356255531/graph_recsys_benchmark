@@ -43,15 +43,15 @@ class MPAGATRecsysModel(GraphRecsysModel):
         super(MPAGATRecsysModel, self).__init__(**kwargs)
 
     def _init(self, **kwargs):
-        self.meta_path_steps = kwargs['meta_path_steps']
-        self.if_use_features = kwargs['if_use_features']
-        self.aggr = kwargs['aggr']
+        self.meta_path_steps = kwargs['meta_path_steps']  # [2, 2, 2, 3, 2, 2,.....]
+        self.if_use_features = kwargs['if_use_features']  # False
+        self.aggr = kwargs['aggr']                          # inter-channel aggregation ['concat', 'sum', 'mean', 'att']
 
         if not self.if_use_features:
             self.x = torch.nn.Embedding(kwargs['num_nodes'], kwargs['emb_dim'], max_norm=1).weight
         else:
             raise NotImplementedError('Feature not implemented!')
-        self.update_graph_input(kwargs['dataset'])
+        self.meta_path_edge_index_list = self.update_graph_input(kwargs['dataset'])
 
         self.mpagat_channels = torch.nn.ModuleList()
         for num_steps in kwargs['meta_path_steps']:
@@ -64,7 +64,7 @@ class MPAGATRecsysModel(GraphRecsysModel):
         elif self.aggr == 'mean':
             self.fc1 = torch.nn.Linear(2 * kwargs['repr_dim'], kwargs['repr_dim'])
         elif self.aggr == 'att':
-            self.att = torch.nn.Linear(kwargs['repr_dim'], 1)
+            self.att = torch.nn.Linear(kwargs['repr_dim'], 1)  # kwargs['repr_dim'] = 16
             self.fc1 = torch.nn.Linear(2 * kwargs['repr_dim'], kwargs['repr_dim'])
         else:
             raise NotImplemented('Other aggr methods not implemeted!')
@@ -86,6 +86,8 @@ class MPAGATRecsysModel(GraphRecsysModel):
         elif self.aggr == 'mean':
             x = x.mean(dim=-2)
         elif self.aggr == 'att':
+            import pdb
+            pdb.set_trace()
             atts = F.softmax(self.att(x).squeeze(-1), dim=-1).unsqueeze(-1)
             x = torch.sum(x * atts, dim=-2)
         else:

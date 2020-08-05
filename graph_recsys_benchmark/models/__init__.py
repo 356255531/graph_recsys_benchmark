@@ -5,6 +5,7 @@ from .nmf import NMFRecsysModel
 from .mpagcn import MPAGCNRecsysModel
 from .mpagat import MPAGATRecsysModel
 from .mpasage import MPASAGERecsysModel
+from .node2vec import Node2VecRecsysModel
 
 from .kgat import KGATRecsysModel
 
@@ -17,5 +18,6 @@ __all__ = [
     'MPAGCNRecsysModel',
     'MPAGATRecsysModel',
     'MPASAGERecsysModel',
-    'KGATRecsysModel'
+    'KGATRecsysModel',
+    'Node2VecRecsysModel'
 ]

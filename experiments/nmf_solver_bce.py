@@ -42,7 +42,7 @@ parser.add_argument('--lr', type=float, default=0.001, help='')
 parser.add_argument('--weight_decay', type=float, default=0, help='')
 parser.add_argument('--early_stopping', type=int, default=20, help='')
 parser.add_argument('--save_epochs', type=str, default='15,20,25', help='')
-parser.add_argument('--save_every_epoch', type=int, default=20, help='')
+parser.add_argument('--save_every_epoch', type=int, default=26, help='')
 
 args = parser.parse_args()
 
@@ -136,5 +136,5 @@ class NMFSolver(BaseSolver):
 
 if __name__ == '__main__':
     dataset_args['_cf_negative_sampling'] = _negative_sampling
-    solver = NMFSolver(BCENMFRecsysModel, dataset_args, model_args, train_args)
+    solver = BaseSolver(BCENMFRecsysModel, dataset_args, model_args, train_args)
     solver.run()

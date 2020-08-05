@@ -4,7 +4,7 @@ import os
 import pickle
 import numpy as np
 
-from ..datasets import MovieLens
+from graph_recsys_benchmark.datasets import MovieLens
 
 
 def get_folder_path(model, dataset, loss_type):
@@ -24,6 +24,8 @@ def get_folder_path(model, dataset, loss_type):
 def get_opt_class(opt):
     if opt == 'adam':
         return torch.optim.Adam
+    elif opt == 'SparseAdam':
+        return  torch.optim.SparseAdam
     elif opt == 'sgd':
         return torch.optim.SGD
     else:
@@ -62,7 +64,25 @@ def save_kgat_model(file_path, model, optim, epoch, rec_metrics, silent=False):
         print("Saved checkpoint_backup '{}'".format(file_path))
 
 
-def load_model(file_path, model, optim, device):
+def load_random_walk_model(file_path, model, optim, device):
+    if os.path.isfile(file_path):
+        checkpoint = torch.load(file_path, map_location=device)
+        epoch = checkpoint['epoch']
+        model.load_state_dict(checkpoint['model_states']['model'])
+        optim.load_state_dict(checkpoint['optim_states']['optim'])
+        for state in optim.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(device)
+        print("Loaded checkpoint_backup '{}'".format(file_path))
+    else:
+        print("No checkpoint_backup found at '{}'".format(file_path))
+        epoch = 0
+
+    return model, optim, epoch
+
+
+def load_gnn_model(file_path, model, optim, device):
     if os.path.isfile(file_path):
         checkpoint = torch.load(file_path, map_location=device)
         epoch = checkpoint['epoch']
@@ -131,7 +151,7 @@ def save_kgat_global_logger(
         )
 
 
-def load_global_logger(global_logger_filepath):
+def load_gnn_global_logger(global_logger_filepath):
     if os.path.isfile(global_logger_filepath):
         with open(global_logger_filepath, 'rb') as f:
             HRs_per_run, NDCGs_per_run, AUC_per_run, train_loss_per_run, eval_loss_per_run = pickle.load(f)
@@ -158,6 +178,22 @@ def load_kgat_global_logger(global_logger_filepath):
     return HRs_per_run, NDCGs_per_run, AUC_per_run, \
            kg_train_loss_per_run, cf_train_loss_per_run, kg_eval_loss_per_run, cf_eval_loss_per_run, \
            HRs_per_run.shape[0]
+
+
+def load_random_walk_global_logger(global_logger_filepath):
+    if os.path.isfile(global_logger_filepath):
+        with open(global_logger_filepath, 'rb') as f:
+            HRs_per_run, NDCGs_per_run, AUC_per_run, \
+            random_walk_train_loss_per_run, cf_train_loss_per_run, cf_eval_loss_per_run = pickle.load(f)
+    else:
+        print("No loggers found at '{}'".format(global_logger_filepath))
+        HRs_per_run, NDCGs_per_run, AUC_per_run, \
+        random_walk_train_loss_per_run, cf_train_loss_per_run, cf_eval_loss_per_run = \
+            np.zeros((0, 16)), np.zeros((0, 16)), np.zeros((0, 1)), np.zeros((0, 1)), \
+            np.zeros((0, 1)), np.zeros((0, 1))
+
+    return HRs_per_run, NDCGs_per_run, AUC_per_run, \
+           random_walk_train_loss_per_run, cf_train_loss_per_run, cf_eval_loss_per_run, HRs_per_run.shape[0]
 
 
 def load_dataset(dataset_args):

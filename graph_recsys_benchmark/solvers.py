@@ -103,7 +103,7 @@ class BaseSolver(object):
             os.makedirs(global_logger_path, exist_ok=True)
         global_logger_file_path = os.path.join(global_logger_path, 'global_logger.pkl')
         HRs_per_run_np, NDCGs_per_run_np, AUC_per_run_np, train_loss_per_run_np, eval_loss_per_run_np, last_run = \
-            load_global_logger(global_logger_file_path)
+            load_gnn_global_logger(global_logger_file_path)
 
         logger_file_path = os.path.join(global_logger_path, 'logger_file.txt')
         with open(logger_file_path, 'w') as logger_file:
@@ -145,7 +145,7 @@ class BaseSolver(object):
                     if not os.path.exists(weights_path):
                         os.makedirs(weights_path, exist_ok=True)
                     weights_file = os.path.join(weights_path, 'latest.pkl')
-                    model, optimizer, last_epoch, rec_metrics = load_model(weights_file, model, optimizer, self.train_args['device'])
+                    model, optimizer, last_epoch, rec_metrics = load_gnn_model(weights_file, model, optimizer, self.train_args['device'])
                     HRs_per_epoch_np, NDCGs_per_epoch_np, AUC_per_epoch_np, train_loss_per_epoch_np, eval_loss_per_epoch_np = \
                         rec_metrics
 

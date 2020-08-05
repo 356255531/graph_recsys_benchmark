@@ -151,7 +151,7 @@ class MPAGATRecsysModel(MPAGATRecsysModel):
         ]
 
         # meta_path_edge_index_list = [meta_path_edge_indicis_1, meta_path_edge_indicis_2]
-        self.meta_path_edge_index_list = meta_path_edge_index_list
+        return meta_path_edge_index_list
 
 
 class PAGAGATSolver(BaseSolver):

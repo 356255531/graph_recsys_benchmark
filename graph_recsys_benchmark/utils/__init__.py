@@ -10,10 +10,12 @@ __all__ = [
     'save_model',
     'save_kgat_model',
     'load_kgat_model',
-    'load_model',
+    'load_gnn_model',
+    'load_random_walk_model',
     'save_global_logger',
     'save_kgat_global_logger',
-    'load_global_logger',
+    'load_gnn_global_logger',
     'load_kgat_global_logger',
+    'load_random_walk_global_logger',
     'load_dataset'
 ]

@@ -3,19 +3,19 @@ import torch
 import os
 import numpy as np
 import random as rd
-import time
 import tqdm
+import time
 
+from torch_geometric.nn.models import Node2Vec
 from torch.utils.data import DataLoader
 
-from graph_recsys_benchmark.models import KGATRecsysModel
-from graph_recsys_benchmark.solvers import BaseSolver
+from graph_recsys_benchmark.models import Node2VecRecsysModel
 from graph_recsys_benchmark.utils import *
+from graph_recsys_benchmark.solvers import BaseSolver
 
-MODEL_TYPE = 'Graph'
-KG_LOSS_TYPE = 'BPR'
-CF_LOSS_TYPE = 'BPR'
-MODEL = 'KGAT'
+MODEL_TYPE = 'Walk'
+LOSS_TYPE = 'BPR'
+MODEL = 'Node2Vec'
 
 parser = argparse.ArgumentParser()
 
@@ -27,23 +27,28 @@ parser.add_argument('--num_core', type=int, default=10, help='')
 parser.add_argument('--num_feat_core', type=int, default=10, help='')
 
 # Model params
-parser.add_argument('--dropout', type=float, default=0, help='')
 parser.add_argument('--emb_dim', type=int, default=64, help='')
-parser.add_argument('--hidden_size', type=int, default=64, help='')
+parser.add_argument('--walk_length', type=int, default=20, help='')
+parser.add_argument('--context_size', type=int, default=10, help='')
+parser.add_argument('--walks_per_node', type=int, default=10, help='')
+parser.add_argument('--sparse', type=str, default='true', help='')
+
 # Train params
 parser.add_argument('--init_eval', type=str, default='false', help='')
 parser.add_argument('--num_negative_samples', type=int, default=4, help='')
 parser.add_argument('--num_neg_candidates', type=int, default=99, help='')
 
 parser.add_argument('--device', type=str, default='cuda', help='')
-parser.add_argument('--gpu_idx', type=str, default='0', help='')
+parser.add_argument('--gpu_idx', type=str, default='4', help='')
 parser.add_argument('--runs', type=int, default=5, help='')
 parser.add_argument('--epochs', type=int, default=30, help='')
-parser.add_argument('--batch_size', type=int, default=1024, help='')
+parser.add_argument('--batch_size', type=int, default=1028, help='')
 parser.add_argument('--num_workers', type=int, default=4, help='')
+parser.add_argument('--random_walk_opt', type=str, default='SparseAdam', help='')
 parser.add_argument('--opt', type=str, default='adam', help='')
 parser.add_argument('--lr', type=float, default=0.001, help='')
-parser.add_argument('--weight_decay', type=float, default=0.001, help='')
+parser.add_argument('--weight_decay', type=float, default=0, help='')
+parser.add_argument('--early_stopping', type=int, default=20, help='')
 parser.add_argument('--save_epochs', type=str, default='15,20,25', help='')
 parser.add_argument('--save_every_epoch', type=int, default=26, help='')
 
@@ -52,7 +57,7 @@ args = parser.parse_args()
 
 # Setup data and weights file path
 data_folder, weights_folder, logger_folder = \
-    get_folder_path(model=MODEL, dataset=args.dataset + args.dataset_name, loss_type=CF_LOSS_TYPE)
+    get_folder_path(model=MODEL, dataset=args.dataset + args.dataset_name, loss_type=LOSS_TYPE)
 
 # Setup device
 if not torch.cuda.is_available() or args.device == 'cpu':
@@ -65,18 +70,18 @@ dataset_args = {
     'root': data_folder, 'dataset': args.dataset, 'name': args.dataset_name,
     'if_use_features': args.if_use_features.lower() == 'true', 'num_negative_samples': args.num_negative_samples,
     'num_core': args.num_core, 'num_feat_core': args.num_feat_core,
-    'kg_loss_type': KG_LOSS_TYPE, 'cf_loss_type': CF_LOSS_TYPE
+    'cf_loss_type': LOSS_TYPE
 }
 model_args = {
-    'model_type': MODEL_TYPE,
-    'if_use_features': args.if_use_features.lower() == 'true',
-    'emb_dim': args.emb_dim, 'hidden_size': args.hidden_size,
-    'dropout': args.dropout,
+    'embedding_dim': args.emb_dim,
+    'walk_length': args.walk_length, 'context_size': args.context_size,
+    'walks_per_node': args.walk_length, 'num_negative_samples': args.context_size,
+    'sparse': args.sparse.lower() == 'true',
 }
 train_args = {
     'init_eval': args.init_eval.lower() == 'true',
     'num_negative_samples': args.num_negative_samples, 'num_neg_candidates': args.num_neg_candidates,
-    'opt': args.opt,
+    'random_walk_opt': args.random_walk_opt, 'opt': args.opt,
     'runs': args.runs, 'epochs': args.epochs, 'batch_size': args.batch_size,
     'num_workers': args.num_workers,
     'weight_decay': args.weight_decay, 'lr': args.lr, 'device': device,
@@ -89,7 +94,7 @@ print('task params: {}'.format(model_args))
 print('train params: {}'.format(train_args))
 
 
-def _cf_negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_occs):
+def _negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_occs):
     '''
     The negative sampling methods used for generating the training batches
     :param u_nid:
@@ -108,8 +113,8 @@ def _cf_negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_
     return np.array(negative_inids).reshape(-1, 1)
 
 
-class KGATRecsysModel(KGATRecsysModel):
-    def cf_loss(self, batch):
+class Node2VecRecsysModel(Node2VecRecsysModel):
+    def loss(self, batch):
         if self.training:
             self.cached_repr = self.forward()
         pos_pred = self.predict(batch[:, 0], batch[:, 1])
@@ -119,42 +124,10 @@ class KGATRecsysModel(KGATRecsysModel):
 
         return loss
 
-    def kg_loss(self, batch):
-        h = self.x[batch[:, 0]]
-        pos_t = self.x[batch[:, 1]]
-        neg_t = self.x[batch[:, 2]]
 
-        r = self.r[batch[:, 3]]
-        pos_diff = torch.mm(h, self.proj_mat) + r - torch.mm(pos_t, self.proj_mat)
-        neg_diff = torch.mm(h, self.proj_mat) + r - torch.mm(neg_t, self.proj_mat)
-
-        pos_pred = (pos_diff * pos_diff).sum(-1)
-        neg_pred = (neg_diff * neg_diff).sum(-1)
-
-        loss = -(pos_pred - neg_pred).sigmoid().log().sum()
-
-        return loss
-
-    def update_graph_input(self, dataset):
-        edge_index_r_nps = [
-            (edge_index, np.ones((edge_index.shape[1], 1)) * dataset.edge_type_dict[edge_type])
-            for edge_type, edge_index in dataset.edge_index_nps.items()
-        ]
-        edge_index_np = np.hstack([_[0] for _ in edge_index_r_nps])
-        r_np = np.vstack([_[1] for _ in edge_index_r_nps])
-
-        edge_index_np = np.hstack([edge_index_np, np.flip(edge_index_np, 0)])
-        r_np = np.vstack([r_np, -r_np])
-
-        edge_index = torch.from_numpy(edge_index_np).long().to(train_args['device'])
-        edge_attr = torch.from_numpy(r_np).long().to(train_args['device'])
-
-        return edge_index, edge_attr
-
-
-class KGATSolver(BaseSolver):
+class Node2VecSolver(BaseSolver):
     def __init__(self, model_class, dataset_args, model_args, train_args):
-        super(KGATSolver, self).__init__(model_class, dataset_args, model_args, train_args)
+        super(Node2VecSolver, self).__init__(model_class, dataset_args, model_args, train_args)
 
     def generate_candidates(self, dataset, u_nid):
         pos_i_nids = dataset.test_pos_unid_inid_map[u_nid]
@@ -170,9 +143,9 @@ class KGATSolver(BaseSolver):
             os.makedirs(global_logger_path, exist_ok=True)
         global_logger_file_path = os.path.join(global_logger_path, 'global_logger.pkl')
         HRs_per_run_np, NDCGs_per_run_np, AUC_per_run_np, \
-        kg_train_loss_per_run_np, cf_train_loss_per_run_np, \
-        kg_eval_loss_per_run_np, cf_eval_loss_per_run_np, last_run = \
-            load_kgat_global_logger(global_logger_file_path)
+        random_walk_train_loss_per_run_np, cf_train_loss_per_run_np, \
+        cf_eval_loss_per_run_np, last_run = \
+            load_random_walk_global_logger(global_logger_file_path)
 
         logger_file_path = os.path.join(global_logger_path, 'logger_file.txt')
         with open(logger_file_path, 'w') as logger_file:
@@ -190,12 +163,51 @@ class KGATSolver(BaseSolver):
                     self.dataset_args['seed'] = seed
                     dataset = load_dataset(self.dataset_args)
 
-                    # Create model and optimizer
-                    if self.model_args['if_use_features']:
-                        self.model_args['emb_dim'] = dataset.data.x.shape[1]
-                    self.model_args['num_nodes'] = dataset.num_nodes
-                    self.model_args['dataset'] = dataset
+                    # Create random walk model
+                    edge_index_np = np.hstack(list(dataset.edge_index_nps.values()))
+                    edge_index_np = np.hstack([edge_index_np, np.flip(edge_index_np, 0)])
+                    edge_index = torch.from_numpy(edge_index_np).long().to(train_args['device'])
+                    self.model_args['edge_index'] = edge_index
+                    random_walk_model = Node2Vec(**self.model_args).to(device)
+                    opt_class = get_opt_class(self.train_args['random_walk_opt'])
+                    random_walk_optimizer = opt_class(
+                        params=random_walk_model.parameters(),
+                        lr=self.train_args['random_walk_lr'],
+                    )
 
+                    # Load the random walk model
+                    weights_path = os.path.join(self.train_args['weights_folder'], 'run_{}'.format(str(run)))
+                    if not os.path.exists(weights_path):
+                        os.makedirs(weights_path, exist_ok=True)
+                    weights_file = os.path.join(weights_path, 'random_walk_latest.pkl')
+                    random_walk_model, random_walk_optimizer, random_walk_last_epoch = \
+                        load_random_walk_model(weights_file, model, random_walk_optimizer, self.train_args['device'])
+
+                    # Train random walk model
+                    start_epoch = random_walk_last_epoch + 1
+                    if start_epoch <= self.train_args['random_walk_epoch']:
+                        model.train()
+                        loader = random_walk_model.loader(
+                            batch_size=self.train_args['batch_size'],
+                            shuffle=True,
+                            num_workers=self.train_args['num_workers']
+                        )
+                        if torch.cuda.is_available():
+                            torch.cuda.synchronize()
+                        for epoch in range(start_epoch, self.train_args['random_walk_epoch'] + 1):
+                            losses = []
+                            pbar = tqdm.tqdm(loader, len(loader))
+                            for pos_rw, neg_rw in pbar:
+                                random_walk_optimizer.zero_grad()
+                                loss = model.loss(pos_rw.to(device), neg_rw.to(device))
+                                loss.backward()
+                                losses.append(loss.detach().cpu().item())
+                                random_walk_optimizer.step()
+                                pbar.set_description('Random walk loss: {}'.format(loss))
+                        if torch.cuda.is_available():
+                            torch.cuda.synchronize()
+
+                    #
                     model = self.model_class(**self.model_args).to(self.train_args['device'])
 
                     opt_class = get_opt_class(self.train_args['opt'])
@@ -364,7 +376,7 @@ class KGATSolver(BaseSolver):
                     HRs_per_run_np = np.vstack([HRs_per_run_np, HRs_per_epoch_np[-1]])
                     NDCGs_per_run_np = np.vstack([NDCGs_per_run_np, NDCGs_per_epoch_np[-1]])
                     AUC_per_run_np = np.vstack([AUC_per_run_np, AUC_per_epoch_np[-1]])
-                    kg_train_loss_per_run_np = np.vstack([kg_train_loss_per_run_np, kg_train_loss_per_epoch_np[-1]])
+                    random_walk_train_loss_per_run_np = np.vstack([random_walk_train_loss_per_run_np, kg_train_loss_per_epoch_np[-1]])
                     cf_train_loss_per_run_np = np.vstack([cf_train_loss_per_run_np, cf_train_loss_per_epoch_np[-1]])
                     kg_eval_loss_per_run_np = np.vstack([kg_eval_loss_per_run_np, kg_eval_loss_per_epoch_np[-1]])
                     cf_eval_loss_per_run_np = np.vstack([cf_eval_loss_per_run_np, cf_eval_loss_per_epoch_np[-1]])
@@ -372,7 +384,7 @@ class KGATSolver(BaseSolver):
                     save_kgat_global_logger(
                         global_logger_file_path,
                         HRs_per_run_np, NDCGs_per_run_np, AUC_per_run_np,
-                        kg_train_loss_per_run_np, cf_train_loss_per_run_np,
+                        random_walk_train_loss_per_run_np, cf_train_loss_per_run_np,
                         kg_eval_loss_per_run_np, cf_eval_loss_per_run_np
                     )
                     print(
@@ -400,7 +412,7 @@ class KGATSolver(BaseSolver):
                 kg train loss: {:.4f}, cf train loss: {:.4f}, \
                 kg eval loss: {:.4f}, cf eval loss: {:.4f}\n'.format(
                     HRs_per_run_np.mean(axis=0)[5], NDCGs_per_run_np.mean(axis=0)[5], AUC_per_run_np.mean(axis=0)[0],
-                    kg_train_loss_per_run_np.mean(axis=0)[0], cf_train_loss_per_run_np.mean(axis=0)[0],
+                    random_walk_train_loss_per_run_np.mean(axis=0)[0], cf_train_loss_per_run_np.mean(axis=0)[0],
                     kg_eval_loss_per_run_np.mean(axis=0)[0], cf_eval_loss_per_run_np.mean(axis=0)[0]
                 )
             )
@@ -409,13 +421,13 @@ class KGATSolver(BaseSolver):
                 kg train loss: {:.4f}, cf train loss: {:.4f}, \
                 kg eval loss: {:.4f}, cf eval loss: {:.4f}\n'.format(
                     HRs_per_run_np.mean(axis=0)[5], NDCGs_per_run_np.mean(axis=0)[5], AUC_per_run_np.mean(axis=0)[0],
-                    kg_train_loss_per_run_np.mean(axis=0)[0], cf_train_loss_per_run_np.mean(axis=0)[0],
+                    random_walk_train_loss_per_run_np.mean(axis=0)[0], cf_train_loss_per_run_np.mean(axis=0)[0],
                     kg_eval_loss_per_run_np.mean(axis=0)[0], cf_eval_loss_per_run_np.mean(axis=0)[0]
                 )
             )
 
 
 if __name__ == '__main__':
-    dataset_args['_cf_negative_sampling'] = _cf_negative_sampling
-    solver = KGATSolver(KGATRecsysModel, dataset_args, model_args, train_args)
+    dataset_args['_cf_negative_sampling'] = _negative_sampling
+    solver = Node2VecSolver(Node2VecRecsysModel, dataset_args, model_args, train_args)
     solver.run()

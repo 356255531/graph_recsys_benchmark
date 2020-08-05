@@ -23,6 +23,6 @@ _, _, logger_folder = \
 global_logger_file_path = os.path.join(logger_folder, str(model_args))
 
 HRs_per_run_np, NDCGs_per_run_np, AUC_per_run_np, train_loss_per_run_np, eval_loss_per_run_np, last_run = \
-            load_global_logger(global_logger_file_path)
+            load_gnn_global_logger(global_logger_file_path)
 
 print(NDCGs_per_run_np)

@@ -66,7 +66,7 @@ class MPAGCNRecsysModel(GraphRecsysModel):
             module.reset_parameters()
 
     def forward(self):
-        xs = [module(self.x, self.meta_path_edge_index_list[idx]) for idx, module in enumerate(self.mpagcn_channels)]
+        x = [module(self.x, self.meta_path_edge_index_list[idx]) for idx, module in enumerate(self.mpagcn_channels)]
         if self.aggr == 'concat':
             x = x.view(x.shape[0], -1)
         elif self.aggr == 'mean':

@@ -38,8 +38,8 @@ parser.add_argument('--num_workers', type=int, default=4, help='')
 parser.add_argument('--opt', type=str, default='adam', help='')
 parser.add_argument('--lr', type=float, default=0.001, help='')
 parser.add_argument('--weight_decay', type=float, default=0.001, help='')
-parser.add_argument('--save_epochs', type=str, default='20,30,40', help='')
-parser.add_argument('--save_every_epoch', type=int, default=41, help='')
+parser.add_argument('--save_epochs', type=str, default='15,20,25', help='')
+parser.add_argument('--save_every_epoch', type=int, default=26, help='')
 
 args = parser.parse_args()
 

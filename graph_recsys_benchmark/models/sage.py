@@ -22,21 +22,19 @@ class SAGERecsysModel(GraphRecsysModel):
         self.x, self.edge_index = self.update_graph_input(kwargs['dataset'])
 
         self.conv1 = SAGEConv(kwargs['emb_dim'], kwargs['hidden_size'])
-        self.conv2 = SAGEConv(kwargs['hidden_size'], kwargs['repr_dim'])
-
-        self.fc1 = torch.nn.Linear(2 * kwargs['repr_dim'], kwargs['repr_dim'])
-        self.fc2 = torch.nn.Linear(kwargs['repr_dim'], 1)
+        self.conv2 = SAGEConv(kwargs['hidden_size'], kwargs['hidden_size'] // 2)
+        self.conv3 = SAGEConv(kwargs['hidden_size'] // 2, kwargs['hidden_size'] // 4)
 
     def reset_parameters(self):
         if not self.if_use_features:
             glorot(self.x)
         self.conv1.reset_parameters()
         self.conv2.reset_parameters()
-        glorot(self.fc1.weight)
-        glorot(self.fc2.weight)
+        self.conv3.reset_parameters()
 
     def forward(self):
-        x = F.relu(self.conv1(self.x, self.edge_index))
-        x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.conv2(x, self.edge_index)
-        return x
+        x, edge_index = self.x, self.edge_index
+        x_1 = F.normalize(F.dropout(self.conv1(x, edge_index), p=self.dropout, training=self.training), p=2, dim=-1)
+        x_2 = F.normalize(F.dropout(self.conv2(x_1, edge_index), p=self.dropout, training=self.training), p=2, dim=-1)
+        x_3 = F.normalize(F.dropout(self.conv3(x_2, edge_index), p=self.dropout, training=self.training), p=2, dim=-1)
+        return torch.cat([x_1, x_2, x_3], dim=-1)
